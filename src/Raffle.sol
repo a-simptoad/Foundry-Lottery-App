@@ -24,15 +24,24 @@
 
 
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity 0.8.19;
 
 import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
 import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/dev/vrf/libraries/VRFV2PlusClient.sol";
 
 error Raffle_NotEnoughEth();
 error Raffle_TimeNotPassed();
+error Raffle_TransferFailed();
+error Raffle_RaffleNotOpen();
 
 contract Raffle is VRFConsumerBaseV2Plus {
+
+    // Type declarations
+    enum RaffleState {
+        OPEN,
+        CALCULATING
+    }
+
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
     uint32 private constant NUM_WORDS = 1;
     uint256 private immutable i_entraceFee;
@@ -40,7 +49,10 @@ contract Raffle is VRFConsumerBaseV2Plus {
     bytes32 private immutable i_keyHash;
     uint256 private immutable i_subscriptionId;
     uint32 private immutable i_callbackGasLimit;
+
+    RaffleState private s_raffleState;
     address payable[] private s_players;
+    address private s_recentWinner;
     uint256 private s_lastTimeStamp;
 
     event EnteredRaffle(address indexed player);
@@ -55,10 +67,12 @@ contract Raffle is VRFConsumerBaseV2Plus {
     ) VRFConsumerBaseV2Plus(vrfCoordinator) {
         i_entraceFee = entranceFee;
         i_interval = interval;
-        s_lastTimeStamp = block.timestamp;
         i_keyHash = keyHash;
         i_subscriptionId = subscriptionId;
         i_callbackGasLimit = callbackGasLimit;
+
+        s_lastTimeStamp = block.timestamp;
+        s_raffleState = RaffleState.OPEN;
     }
 
     function enterRaffle() external payable {
@@ -69,6 +83,10 @@ contract Raffle is VRFConsumerBaseV2Plus {
         // MOST GAS EFFICIENT
         if (msg.value < i_entraceFee) {
             revert Raffle_NotEnoughEth();
+        }
+
+        if(s_raffleState != RaffleState.OPEN) {
+            revert Raffle_RaffleNotOpen();
         }
 
         s_players.push(payable(msg.sender));
@@ -83,6 +101,8 @@ contract Raffle is VRFConsumerBaseV2Plus {
         if (block.timestamp - s_lastTimeStamp > i_interval) {
             revert Raffle_TimeNotPassed();
         }
+
+        s_raffleState = RaffleState.CALCULATING;
 
         // s_vrfCoordinator is a coordinator which requests random number from the Chainlink oracle.
         VRFV2PlusClient.RandomWordsRequest memory request = VRFV2PlusClient.RandomWordsRequest({
@@ -100,5 +120,15 @@ contract Raffle is VRFConsumerBaseV2Plus {
         uint256 requestId = s_vrfCoordinator.requestRandomWords(request);
     }
     
-    function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal override {}
+    function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal override {
+        uint256 indexOfWinner = randomWords[0] % s_players.length;
+        address payable recentWinner = s_players[indexOfWinner];
+        s_recentWinner = recentWinner;
+        s_raffleState = RaffleState.OPEN;
+        
+        (bool success, ) = recentWinner.call{value: address(this).balance}("");
+        if(!success) {
+            revert Raffle_TransferFailed();
+        }
+    }
 }
