@@ -89,6 +89,7 @@ contract HelperConfig is CodeConstants, Script {
             callbackGasLimit: 500_000
         });
     }
+
     function getConfig() public returns (NetworkConfig memory) {
         return getConfigByChainId(block.chainId);
     }
