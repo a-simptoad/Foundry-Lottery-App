@@ -26,14 +26,13 @@
 pragma solidity 0.8.19;
 
 import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
-import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/dev/vrf/libraries/VRFV2PlusClient.sol";
-import {VRFCoordinatorV2Interface} from "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
+import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
 
-error Raffle_NotEnoughEth();
-error Raffle_TimeNotPassed();
-error Raffle_TransferFailed();
-error Raffle_RaffleNotOpen();
-error Raffle_UpkeepNotNeeded(uint256 currentBalance, uint256 numPlayers, uint256 raffleState);
+error Raffle__NotEnoughEth();
+error Raffle__TimeNotPassed();
+error Raffle__TransferFailed();
+error Raffle__RaffleNotOpen();
+error Raffle__UpkeepNotNeeded(uint256 currentBalance, uint256 numPlayers, uint256 raffleState);
 
 contract Raffle is VRFConsumerBaseV2Plus {
     // Type declarations
@@ -42,14 +41,13 @@ contract Raffle is VRFConsumerBaseV2Plus {
         CALCULATING
     }
 
-    uint16 private constant REQUEST_CONFIRMATIONS = 3;
+    uint16 private constant REQUEST_CONFIRMATIONS = 3; // No. of block conformations before getting the random value, the less the no. , the less secure but faster request.
     uint32 private constant NUM_WORDS = 1;
     uint256 private immutable i_entraceFee;
     uint256 private immutable i_interval;
-    bytes32 private immutable i_keyHash;
+    bytes32 private immutable i_keyHash; // gas lane used, specifies the max gas price to bump to.
     uint64 private immutable i_subscriptionId;
-    uint32 private immutable i_callbackGasLimit;
-    VRFCoordinatorV2Interface private immutable i_vrfCoordinatorContract;
+    uint32 private immutable i_callbackGasLimit; // storing each word costs about 20k gas. hence a limit is placed.
 
     RaffleState private s_raffleState;
     address payable[] private s_players;
@@ -58,6 +56,9 @@ contract Raffle is VRFConsumerBaseV2Plus {
 
     event EnteredRaffle(address indexed player);
     event WinnerPicked(address winner);
+
+    // Can have upto 3 indexed parameters
+    // Indexed parameters have certain characteristics i.e. searchability etc.
 
     constructor(
         uint256 entranceFee,
@@ -75,8 +76,6 @@ contract Raffle is VRFConsumerBaseV2Plus {
 
         s_lastTimeStamp = block.timestamp;
         s_raffleState = RaffleState.OPEN;
-
-        i_vrfCoordinatorContract = VRFCoordinatorV2Interface(vrfCoordinator);
     }
 
     function enterRaffle() external payable {
@@ -86,11 +85,11 @@ contract Raffle is VRFConsumerBaseV2Plus {
 
         // MOST GAS EFFICIENT
         if (msg.value < i_entraceFee) {
-            revert Raffle_NotEnoughEth();
+            revert Raffle__NotEnoughEth();
         }
 
         if (s_raffleState != RaffleState.OPEN) {
-            revert Raffle_RaffleNotOpen();
+            revert Raffle__RaffleNotOpen();
         }
 
         s_players.push(payable(msg.sender));
@@ -98,7 +97,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
     }
 
     function checkUpkeep(bytes memory /* checkData */ )
-        external
+        public
         view
         returns (bool upkeepNeeded, bytes memory /* performData */ )
     {
@@ -119,38 +118,29 @@ contract Raffle is VRFConsumerBaseV2Plus {
     function performUpkeep(bytes calldata /* performData */ ) external {
         (bool upkeepNeeded,) = checkUpkeep("");
         if (!upkeepNeeded) {
-            revert Raffle_UpkeepNotNeeded(address(this).balance, s_players.length, uint256(s_raffleState));
+            revert Raffle__UpkeepNotNeeded(address(this).balance, s_players.length, uint256(s_raffleState));
         }
-
-        // // Check if enough time has passed
-        // if (block.timestamp - s_lastTimeStamp > i_interval) {
-        //     revert Raffle_TimeNotPassed();
-        // }
 
         s_raffleState = RaffleState.CALCULATING;
 
         // s_vrfCoordinator is a coordinator which requests random number from the Chainlink oracle.
 
-        // VRFV2PlusClient.RandomWordsRequest memory request = VRFV2PlusClient.RandomWordsRequest({
-        //     keyHash: i_keyHash,
-        //     subId: i_subscriptionId,
-        //     requestConfirmations: REQUEST_CONFIRMATIONS,
-        //     callbackGasLimit: i_callbackGasLimit,
-        //     numWords: NUM_WORDS,
-        //     extraArgs: VRFV2PlusClient._argsToBytes(
-        //         // Set nativePayment to true to pay for VRF requests with Sepolia ETH instead of LINK
-        //         VRFV2PlusClient.ExtraArgsV1({nativePayment: false})
-        //     )
-        // });
+       VRFV2PlusClient.RandomWordsRequest memory req = VRFV2PlusClient.RandomWordsRequest({
+            keyHash: i_keyHash,
+            subId: i_subscriptionId,
+            requestConfirmations: REQUEST_CONFIRMATIONS,
+            callbackGasLimit: i_callbackGasLimit,
+            numWords: NUM_WORDS,
+            extraArgs: VRFV2PlusClient._argsToBytes(
+                // Set nativePayment to true to pay for VRF requests with Sepolia ETH instead of LINK
+                VRFV2PlusClient.ExtraArgsV1({nativePayment: false})
+            )
+        });
 
-        // uint256 requestId = s_vrfCoordinator.requestRandomWords(request);
-
-        uint256 requestId = i_vrfCoordinatorContract.requestRandomWords(
-            i_keyHash, i_subscriptionId, REQUEST_CONFIRMATIONS, i_callbackGasLimit, NUM_WORDS
-        );
+        uint256 requestId = s_vrfCoordinator.requestRandomWords(req);
     }
 
-    function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal override {
+    function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
         uint256 indexOfWinner = randomWords[0] % s_players.length;
         address payable recentWinner = s_players[indexOfWinner];
         s_recentWinner = recentWinner;
@@ -161,7 +151,11 @@ contract Raffle is VRFConsumerBaseV2Plus {
         emit EnteredRaffle(recentWinner);
         (bool success,) = recentWinner.call{value: address(this).balance}("");
         if (!success) {
-            revert Raffle_TransferFailed();
+            revert Raffle__TransferFailed();
         }
+    }
+
+    function getRaffleState() external view returns (RaffleState){
+        return s_raffleState;
     }
 }

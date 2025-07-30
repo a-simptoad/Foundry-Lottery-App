@@ -9,8 +9,6 @@ error HelperConfig_InvalidChainId();
 abstract contract CodeConstants {
     uint256 public constant SEPOLIA_CHAIN_ID = 11155111;
     uint256 public constant LOCAL_CHAIN_ID = 31337;
-
-    constructor() {}
 }
 
 contract HelperConfig is CodeConstants, Script {
@@ -91,6 +89,6 @@ contract HelperConfig is CodeConstants, Script {
     }
 
     function getConfig() public returns (NetworkConfig memory) {
-        return getConfigByChainId(block.chainId);
+        return getConfigByChainId(block.chainid);
     }
 }

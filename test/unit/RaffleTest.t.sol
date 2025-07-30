@@ -1,11 +1,11 @@
-//SPDX-License-Identifier: MIT
-
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
 import {Test} from "forge-std/Test.sol";
-import {Raffle} from "../../src/Raffle.sol";
-import {HelperConfig} from "../HelperConfig.s.sol";
-import {DeployRaffle} from "../DeployRaffle.s.sol";
+import {console} from "forge-std/console.sol";
+import {DeployRaffle} from "script/DeployRaffle.s.sol";
+import {Raffle} from "src/Raffle.sol";
+import {HelperConfig} from "script/HelperConfig.s.sol";
 
 contract RaffleTest is Test {
     Raffle public raffle;
@@ -14,20 +14,28 @@ contract RaffleTest is Test {
     uint256 entranceFee;
     uint256 interval;
     address vrfCoordinator;
-    bytes32 keyHash;
+    bytes32 gasLane;
     uint64 subscriptionId;
     uint32 callbackGasLimit;
 
-    address public player = makeAddr("player");
+    address public PLAYER = makeAddr("player");
     uint256 public constant STARTING_PLAYER_BALANCE = 10 ether;
 
-    function setUp() public {
-        DeployRaffle deployRaffle = new DeployRaffle();
-        (raffle, helperConfig) = deployRaffle.deployRaffle();
-        HeplerConfig.NetworkConfig memory config = helperConfig.getConfig();
+    function setUp() external {
+        DeployRaffle deployer = new DeployRaffle();
+        (raffle, helperConfig) = deployer.deployContract();
+
+        console.log("raffle address", address(raffle), "  helper addr", address(helperConfig));
+        HelperConfig.NetworkConfig memory config = helperConfig.getConfig();
+        entranceFee = config.entranceFee;
+        interval = config.interval;
+        vrfCoordinator = config.vrfCoordinator;
+        gasLane = config.gasLane;
+        callbackGasLimit = config.callbackGasLimit;
+        subscriptionId = config.subscriptionId;
     }
 
-    function testRaffleInitializesInOpenState() public {
-
+    function testRaffleInitializesInOpenState() public view {
+        assert(raffle.getRaffleState() == Raffle.RaffleState.OPEN);
     }
 }
