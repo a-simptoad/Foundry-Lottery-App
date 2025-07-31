@@ -86,6 +86,8 @@ contract RaffleTest is Test {
         vm.warp(block.timestamp + interval + 1); // Changes the time in the simulated environment
         vm.roll(block.number + 1);// Changes the blocknumber in the simulation
         raffle.performUpkeep("");
+        // performUpkeep reverts as we have not setup any subscription which is necessary for the mockVRFCoordinator
+        // Hence we need a subId and fund it in the interactions.s.sol
 
         //Act
         vm.expectRevert(Raffle.Raffle__RaffleNotOpen.selector);
