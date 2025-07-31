@@ -28,13 +28,15 @@ pragma solidity 0.8.19;
 import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
 import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
 
-error Raffle__NotEnoughEth();
-error Raffle__TimeNotPassed();
-error Raffle__TransferFailed();
-error Raffle__RaffleNotOpen();
-error Raffle__UpkeepNotNeeded(uint256 currentBalance, uint256 numPlayers, uint256 raffleState);
 
 contract Raffle is VRFConsumerBaseV2Plus {
+    
+    error Raffle__NotEnoughEth();
+    error Raffle__TimeNotPassed();
+    error Raffle__TransferFailed();
+    error Raffle__RaffleNotOpen();
+    error Raffle__UpkeepNotNeeded(uint256 currentBalance, uint256 numPlayers, uint256 raffleState);
+
     // Type declarations
     enum RaffleState {
         OPEN,
@@ -46,7 +48,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
     uint256 private immutable i_entraceFee;
     uint256 private immutable i_interval;
     bytes32 private immutable i_keyHash; // gas lane used, specifies the max gas price to bump to.
-    uint64 private immutable i_subscriptionId;
+    uint256 private immutable i_subscriptionId;
     uint32 private immutable i_callbackGasLimit; // storing each word costs about 20k gas. hence a limit is placed.
 
     RaffleState private s_raffleState;
@@ -65,7 +67,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
         uint256 interval,
         address vrfCoordinator,
         bytes32 keyHash,
-        uint64 subscriptionId,
+        uint256 subscriptionId,
         uint32 callbackGasLimit
     ) VRFConsumerBaseV2Plus(vrfCoordinator) {
         i_entraceFee = entranceFee;
@@ -158,4 +160,8 @@ contract Raffle is VRFConsumerBaseV2Plus {
     function getRaffleState() external view returns (RaffleState){
         return s_raffleState;
     }
+
+    function getPlayer(uint256 indexOfPlayer) external view returns (address){
+        return s_players[indexOfPlayer];
+    } 
 }
