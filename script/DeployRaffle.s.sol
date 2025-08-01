@@ -2,6 +2,7 @@
 pragma solidity 0.8.19;
 
 import {Script} from "forge-std/Script.sol";
+import {console} from "forge-std/console.sol";
 import {Raffle} from "src/Raffle.sol";
 import {HelperConfig} from "script/HelperConfig.s.sol";
 import {CreateSubscription, FundSubscription, AddConsumer} from "test/integration/interactions.s.sol";
@@ -38,6 +39,7 @@ contract DeployRaffle is Script {
 
         //Don't need to broadCast as we already do it in the function itself
         AddConsumer addConsumer = new AddConsumer();
+        console.log("deployRaffle SubId: ", config.subscriptionId);
         addConsumer.addConsumer(address(raffle), config.vrfCoordinator, config.subscriptionId);
 
         return (raffle, helperConfig);

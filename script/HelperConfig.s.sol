@@ -35,10 +35,13 @@ contract HelperConfig is CodeConstants, Script {
         if (networkConfigs[chainId].vrfCoordinator != address(0)) {
             return networkConfigs[chainId];
         } else if (chainId == LOCAL_CHAIN_ID) {
-            return getOrCreateAnvilEthConfig();
+            NetworkConfig memory config = getOrCreateAnvilEthConfig();
+            networkConfigs[chainId] = config;
+            return config;
         } else {
             revert HelperConfig_InvalidChainId();
         }
+        
     }
 
     // Returns the network configuration based on the Sepolia network

@@ -58,6 +58,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
 
     event EnteredRaffle(address indexed player);
     event WinnerPicked(address winner);
+    event RequestedRaffleWinner(uint256 indexed requestId);
 
     // Can have upto 3 indexed parameters
     // Indexed parameters have certain characteristics i.e. searchability etc.
@@ -140,6 +141,9 @@ contract Raffle is VRFConsumerBaseV2Plus {
         });
 
         uint256 requestId = s_vrfCoordinator.requestRandomWords(req);
+
+        // This is redundant(repetitive) as the VrfCoordinator contract is already emitting this event
+        emit RequestedRaffleWinner(requestId);
     }
 
     function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
@@ -164,4 +168,12 @@ contract Raffle is VRFConsumerBaseV2Plus {
     function getPlayer(uint256 indexOfPlayer) external view returns (address){
         return s_players[indexOfPlayer];
     } 
+
+    function getLastTimeStamp() external view returns(uint256) {
+        return s_lastTimeStamp;
+    }
+
+    function getRecentWinner() external view returns(address) {
+        return s_recentWinner;
+    }
 }
