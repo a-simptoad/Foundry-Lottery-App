@@ -95,4 +95,95 @@ contract RaffleTest is Test {
         raffle.enterRaffle{value: entranceFee}();
 
     }
+
+    //CheckUPkeeep
+    function testCheckUpkeepReturnsFalseIfItHasNoBalance() public {
+        // Arrange 
+        vm.warp(block.timestamp + interval + 1);
+        vm.roll(block.number + 1);
+
+        //Act
+        (bool upKeepNeeded, ) = raffle.checkUpkeep("");
+
+        //assert
+        assert(!upKeepNeeded);
+    }
+
+    function testCheckUpkeepReturnsFalseIfRaffleIsntOpen() public {
+        //Arrange 
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: entranceFee}();
+        vm.warp(block.timestamp + interval + 1);
+        vm.roll(block.number + 1);
+        raffle.performUpkeep(""); // Raffle not open now
+
+        //Act 
+        (bool upKeepNeeded, ) = raffle.checkUpkeep("");
+
+        //Assert 
+        assert(!upKeepNeeded); 
+    }
+
+    function testCheckUpkeepReturnsFalseIfEnoughTimeHasPassed() public {
+        // Arrange 
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: entranceFee}();
+        vm.warp(block.timestamp + interval /2 );
+
+        //Act 
+        (bool upkeepNeeded, ) = raffle.checkUpkeep("");
+
+        // Assert
+        assert(!upkeepNeeded);
+    }
+
+    function testCheckUpkeepReturnsTrueIfAllParametersAreGood() public {
+        // Arrange 
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: entranceFee}();
+        vm.warp(block.timestamp + interval + 1);
+        vm.roll(block.number + 1);
+        
+        //Act 
+        (bool upkeepNeeded, ) = raffle.checkUpkeep("");
+
+        //Assert 
+        assert(upkeepNeeded);
+    }
+
+    // Perform UPkeep tests
+    function testPerformUpkeepCanOnlyRunIfCheckUpkeepIsTrue() public {
+        //Arrange
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: entranceFee}();
+        vm.warp(block.timestamp+interval+1);
+        vm.roll(block.number + 1);
+
+        // Act / Assert
+        raffle.performUpkeep("");
+
+        //Assert 
+        // assert(raffle.getRaffleState() == Raffle.RaffleState.CALCULATING);
+    }
+
+    function testPerformUpkeepRevertsIfCheckUpkeepIsFalse() public {
+        //Arrange
+        uint256 currentBalance = 0;
+        uint256 numPlayers = 0;
+        Raffle.RaffleState rState = raffle.getRaffleState();
+
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: entranceFee}();
+        currentBalance = currentBalance + entranceFee;
+        numPlayers = 1;
+
+        //Act/ Assert 
+        vm.expectRevert(abi.encodeWithSelector(Raffle.Raffle__UpkeepNotNeeded.selector, currentBalance, numPlayers, rState));
+        raffle.performUpkeep("");
+
+        // This error which is reverted contains the data passed as parameters in the contract while defining
+    }
+
+    function 
+
 }
